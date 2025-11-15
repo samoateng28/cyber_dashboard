@@ -1,0 +1,351 @@
+/* Base Card Styling */
+.card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.search-card,
+.results-card,
+.stats-card,
+.dns-card,
+.recent-card {
+    border: 1px solid #e5e7eb;
+}
+
+/* Icon Wrapper */
+.icon-wrapper {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+@media (min-width: 768px) {
+    .icon-wrapper {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+/* Professional Input Group */
+.professional-input .input-group-text {
+    border: 2px solid #e5e7eb;
+    border-right: none;
+    background: #ffffff;
+    padding: 0.75rem 1rem;
+}
+
+.professional-input .form-control {
+    border: 2px solid #e5e7eb;
+    border-left: none;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.professional-input .form-control:focus {
+    border-color: #0d6efd;
+    outline: none;
+}
+
+.professional-input .form-control:focus + .input-group-text,
+.professional-input .input-group-text:has(+ .form-control:focus) {
+    border-color: #0d6efd;
+}
+
+/* Professional Button */
+.professional-btn {
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+}
+
+.professional-btn:hover {
+    transform: translateY(-1px);
+}
+
+.professional-btn:active {
+    transform: translateY(0);
+}
+
+/* Card Headers */
+.card-header {
+    padding: 1rem 1.5rem;
+    border-radius: 12px 12px 0 0 !important;
+    font-weight: 600;
+}
+
+.header-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: #ffffff;
+}
+
+.header-success {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: #ffffff;
+}
+
+.header-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: #ffffff;
+}
+
+.header-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: #ffffff;
+}
+
+/* Badge Professional */
+.badge-professional {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Alert Professional */
+.alert-professional {
+    border-radius: 10px;
+    border: 2px solid;
+    padding: 1.25rem;
+}
+
+.alert-professional-danger {
+    background: #fff5f5;
+    border-color: #feb2b2;
+    color: #c53030;
+}
+
+.alert-professional-success {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+}
+
+/* Badges */
+.badge-danger-pro {
+    background: #dc3545;
+    color: #ffffff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.badge-success-pro {
+    background: #28a745;
+    color: #ffffff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.badge-count {
+    background: #e7f3ff;
+    color: #0d6efd;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+/* List Group Professional */
+.list-group-professional {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.list-group-item-professional {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    background: #ffffff;
+    transition: background 0.2s ease;
+}
+
+.list-group-item-professional:last-child {
+    border-bottom: none;
+}
+
+.list-group-item-professional:hover {
+    background: #f9fafb;
+}
+
+/* Tag Badge */
+.tag-badge {
+    display: inline-block;
+    background: #f3f4f6;
+    color: #4b5563;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #e5e7eb;
+}
+
+/* Info Box */
+.info-box {
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.info-box:hover {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+}
+
+/* Stat Item */
+.stat-item {
+    padding-bottom: 1rem;
+}
+
+.stat-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.stat-item .border-bottom {
+    border-color: #f3f4f6 !important;
+}
+
+/* DNS Records */
+.dns-record {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.dns-record:last-child {
+    border-bottom: none;
+}
+
+/* Table Professional */
+.table-professional thead {
+    background: #f9fafb;
+}
+
+.table-professional thead th {
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.table-professional tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s ease;
+}
+
+.table-professional tbody tr:last-child {
+    border-bottom: none;
+}
+
+.table-professional tbody tr:hover {
+    background: #f9fafb;
+}
+
+.table-professional tbody td {
+    padding: 1rem;
+}
+
+/* Code Badge */
+.code-badge {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.status-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.status-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status-secondary {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 767px) {
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .card-header {
+        padding: 0.875rem 1rem;
+    }
+    
+    .professional-input .input-group-text,
+    .professional-input .form-control {
+        padding: 0.65rem 0.875rem;
+    }
+    
+    .list-group-item-professional {
+        padding: 0.875rem 1rem;
+    }
+    
+    .info-box {
+        padding: 0.875rem;
+    }
+}
+
+/* Smooth Transitions */
+* {
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Focus States */
+.form-control:focus,
+.btn:focus {
+    outline: none;
+}
+
+/* Remove Default Bootstrap Shadows */
+.card,
+.btn,
+.form-control,
+.input-group-text,
+.badge,
+.alert {
+    box-shadow: none !important;
+}
