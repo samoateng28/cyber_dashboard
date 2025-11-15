@@ -1,0 +1,237 @@
+/* Login Page Styles */
+.login-wrapper {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Background Image */
+.login-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/media/login-bg.jpg'); /* Change this to your image path */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -2;
+}
+
+/* Dark Overlay */
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* Adjust opacity here (0.6 = 60% dark) */
+    z-index: -1;
+}
+
+/* Login Container */
+.login-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* Login Card */
+.login-card {
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.98) !important;
+}
+
+/* Input Group Styling */
+.input-group-text {
+    border-right: 0;
+}
+
+.form-control {
+    border-left: 0;
+}
+
+.input-group:focus-within .input-group-text {
+    border-color: #86b7fe;
+}
+
+.input-group:focus-within .form-control {
+    border-color: #86b7fe;
+}
+
+/* Form Control Focus Effect */
+.form-control:focus {
+    box-shadow: none;
+    border-color: #86b7fe;
+}
+
+/* Button Hover Effect */
+.btn-primary {
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+}
+
+.btn-primary:disabled,
+.btn-primary.btn-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn-primary .btn-spinner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Card Shadow */
+.login-card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .login-card .card-body {
+        padding: 2rem 1.5rem !important;
+    }
+    
+    .login-overlay {
+        background: rgba(0, 0, 0, 0.75); /* Darker on mobile for better readability */
+    }
+}
+
+/* Custom scrollbar for the page */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Snackbar Styles */
+.snackbar-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.snackbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 500px;
+    padding: 14px 16px;
+    background: #323232;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+}
+
+.snackbar.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.snackbar-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.snackbar-content {
+    flex-grow: 1;
+}
+
+.snackbar-message {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.snackbar-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+
+.snackbar-close:hover {
+    opacity: 1;
+}
+
+/* Success Snackbar */
+.snackbar-success {
+    background: #2e7d32;
+}
+
+/* Error Snackbar */
+.snackbar-error {
+    background: #d32f2f;
+}
+
+/* Warning Snackbar */
+.snackbar-warning {
+    background: #f57c00;
+}
+
+/* Info Snackbar */
+.snackbar-info {
+    background: #0288d1;
+}
+
+/* Responsive adjustments for snackbar */
+@media (max-width: 576px) {
+    .snackbar-container {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+    }
+    
+    .snackbar {
+        min-width: auto;
+        width: 100%;
+    }
+}
