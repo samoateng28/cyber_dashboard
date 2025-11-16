@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +29,7 @@ SECRET_KEY = 'django-insecure-!th#b9ih68znbij&e9h(b$$^mrls^)6)cp&=#&ab$pg)zb$qde
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+OTX_API_KEY = config('OTX_API_KEY', default='')
 
 # Application definition
 
@@ -117,7 +120,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-import os
+# import os
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),

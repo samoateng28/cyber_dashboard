@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class ThreatLog(models.Model):
     THREAT_TYPES = [
         ('malware', 'Malware'),
