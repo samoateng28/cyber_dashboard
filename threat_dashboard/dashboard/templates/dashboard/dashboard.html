@@ -1,8 +1,9 @@
 {% extends 'dashboard/base_dashboard.html' %}
+{% load dashboard_extras %}
 
 {% block title %}Dashboard - Cyber Threat Intelligence{% endblock %}
 
-{% block page_title %}Dashboard Overview{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
@@ -11,134 +12,175 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Welcome Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <h2 class="mb-2">Welcome back, {{ user.username }}! 👋</h2>
-                    <p class="text-muted mb-0">Here's what's happening with your cyber threat intelligence today.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stats Cards -->
+    <!-- Stats Cards Row -->
     <div class="row g-3 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="col-xl-3 col-sm-6">
+            <div class="card stat-card-colored stat-card-danger">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted mb-1 small">Total Threats</p>
-                            <h3 class="mb-0 fw-bold">1,234</h3>
+                            <span class="stat-label">Total Threats</span>
+                            <h2 class="stat-value">{{ stats.total_threats|default:0 }}</h2>
+                            <small class="stat-subtitle">
+                                <i class="bi bi-arrow-up"></i> Active monitoring
+                            </small>
                         </div>
-                        <div class="bg-danger bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-exclamation-triangle text-danger fs-4"></i>
+                        <div class="stat-icon-colored">
+                            <i class="bi bi-exclamation-triangle"></i>
                         </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="badge bg-danger bg-opacity-10 text-danger">+12% from last week</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="col-xl-3 col-sm-6">
+            <div class="card stat-card-colored stat-card-warning">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted mb-1 small">Malicious IPs</p>
-                            <h3 class="mb-0 fw-bold">456</h3>
+                            <span class="stat-label">Malicious IPs</span>
+                            <h2 class="stat-value">{{ stats.malicious_ips|default:0 }}</h2>
+                            <small class="stat-subtitle">
+                                <i class="bi bi-shield-exclamation"></i> Identified
+                            </small>
                         </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-globe text-warning fs-4"></i>
+                        <div class="stat-icon-colored">
+                            <i class="bi bi-globe"></i>
                         </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="badge bg-warning bg-opacity-10 text-warning">+5% from last week</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="col-xl-3 col-sm-6">
+            <div class="card stat-card-colored stat-card-info">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted mb-1 small">Blocked Domains</p>
-                            <h3 class="mb-0 fw-bold">89</h3>
+                            <span class="stat-label">Blocked Domains</span>
+                            <h2 class="stat-value">{{ stats.blocked_domains|default:0 }}</h2>
+                            <small class="stat-subtitle">
+                                <i class="bi bi-shield-check"></i> Protected
+                            </small>
                         </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-link-45deg text-info fs-4"></i>
+                        <div class="stat-icon-colored">
+                            <i class="bi bi-link-45deg"></i>
                         </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="badge bg-info bg-opacity-10 text-info">+8% from last week</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="col-xl-3 col-sm-6">
+            <div class="card stat-card-colored stat-card-success">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted mb-1 small">Scans Today</p>
-                            <h3 class="mb-0 fw-bold">342</h3>
+                            <span class="stat-label">Scans Today</span>
+                            <h2 class="stat-value">{{ stats.scans_today|default:0 }}</h2>
+                            <small class="stat-subtitle">
+                                <i class="bi bi-check-circle"></i> Real-time
+                            </small>
                         </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-shield-check text-success fs-4"></i>
+                        <div class="stat-icon-colored">
+                            <i class="bi bi-activity"></i>
                         </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="badge bg-success bg-opacity-10 text-success">+23% from last week</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Recent Activity -->
+    <!-- Charts Section -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card chart-card-clean">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="card-title mb-1">Threat Trend</h6>
+                            <small class="text-muted">Last 7 days activity</small>
+                        </div>
+                        <span class="badge-live">Live</span>
+                    </div>
+                    <canvas id="trendChart" height="70"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card chart-card-clean">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Threat Distribution</h6>
+                    <canvas id="threatTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table and Actions -->
     <div class="row g-3">
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Recent Threat Activity</h5>
-                </div>
-                <div class="card-body">
+            <div class="card table-card-clean">
+                <div class="card-body p-0">
+                    <div class="table-header">
+                        <h6 class="mb-0">Recent Threat Activity</h6>
+                        <a href="#" class="btn-view-all">View all <i class="bi bi-arrow-right"></i></a>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-clean mb-0">
                             <thead>
                                 <tr>
                                     <th>Type</th>
                                     <th>Target</th>
                                     <th>Severity</th>
                                     <th>Time</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for threat in recent_threats %}
                                 <tr>
-                                    <td><span class="badge bg-danger">Malware</span></td>
-                                    <td>192.168.1.100</td>
-                                    <td><span class="badge bg-danger bg-opacity-10 text-danger">High</span></td>
-                                    <td>2 mins ago</td>
+                                    <td>
+                                        <span class="badge-type badge-{{ threat.threat_type|get_type_color }}">
+                                            {{ threat.get_threat_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="text-target">{{ threat.target|truncatechars:30 }}</span>
+                                    </td>
+                                    <td>
+                                        {% if threat.severity == 'critical' %}
+                                        <span class="badge-severity badge-critical">Critical</span>
+                                        {% elif threat.severity == 'high' %}
+                                        <span class="badge-severity badge-high">High</span>
+                                        {% elif threat.severity == 'medium' %}
+                                        <span class="badge-severity badge-medium">Medium</span>
+                                        {% else %}
+                                        <span class="badge-severity badge-low">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ threat.detected_at|timesince }} ago</small>
+                                    </td>
+                                    <td>
+                                        {% if threat.is_active %}
+                                        <span class="status-dot status-active"></span>
+                                        {% else %}
+                                        <span class="status-dot status-resolved"></span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
+                                {% empty %}
                                 <tr>
-                                    <td><span class="badge bg-warning">Phishing</span></td>
-                                    <td>suspicious-site.com</td>
-                                    <td><span class="badge bg-warning bg-opacity-10 text-warning">Medium</span></td>
-                                    <td>15 mins ago</td>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="empty-state">
+                                            <i class="bi bi-shield-check"></i>
+                                            <p class="mb-0 mt-2">No threats detected</p>
+                                        </div>
+                                    </td>
                                 </tr>
-                                <tr>
-                                    <td><span class="badge bg-info">Scan</span></td>
-                                    <td>192.168.1.50</td>
-                                    <td><span class="badge bg-info bg-opacity-10 text-info">Low</span></td>
-                                    <td>1 hour ago</td>
-                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
@@ -147,20 +189,28 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Quick Actions</h5>
-                </div>
+            <div class="card chart-card-clean mb-3">
                 <div class="card-body">
+                    <h6 class="card-title mb-3">Severity Breakdown</h6>
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card action-card-clean">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Quick Actions</h6>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-primary btn-lg">
-                            <i class="bi bi-search me-2"></i>Scan IP Address
+                        <button class="btn btn-action-primary">
+                            <i class="bi bi-search"></i>
+                            <span>Scan IP Address</span>
                         </button>
-                        <button class="btn btn-outline-primary btn-lg">
-                            <i class="bi bi-link-45deg me-2"></i>Check Domain
+                        <button class="btn btn-action-secondary">
+                            <i class="bi bi-link-45deg"></i>
+                            <span>Check Domain</span>
                         </button>
-                        <button class="btn btn-outline-secondary btn-lg">
-                            <i class="bi bi-file-earmark-text me-2"></i>View Reports
+                        <button class="btn btn-action-secondary">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>View Reports</span>
                         </button>
                     </div>
                 </div>
@@ -168,4 +218,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ chart_data|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Pass Django data to JavaScript
+    const chartDataElement = document.getElementById('chart-data');
+    const chartData = chartDataElement ? JSON.parse(chartDataElement.textContent) : {
+        trend: [],
+        threat_types: [],
+        severity: []
+    };
+    
+    // Initialize charts when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initDashboardCharts(chartData);
+    });
+</script>
 {% endblock %}

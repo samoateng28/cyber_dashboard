@@ -5,3 +5,4 @@ matplotlib==3.8.2
 Faker==22.6.0
 requests==2.31.0
 python-decouple==3.8
+OTXv2==1.5.12
