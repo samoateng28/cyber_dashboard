@@ -45,6 +45,40 @@ def logout_view(request):
     return redirect('login')
 
 @login_required
+def unified_search_view(request):
+    """Unified search that detects IP or domain and redirects accordingly"""
+    if request.method == 'POST':
+        query = request.POST.get('search_query', '').strip().lower()
+        
+        if not query:
+            messages.warning(request, 'Please enter an IP address or domain to search.')
+            return redirect('dashboard')
+        
+        # IP address pattern (IPv4)
+        ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+        
+        # Domain pattern (no scheme, no path)
+        domain_pattern = re.compile(r'^(?!-)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$')
+        
+        # Check if it's an IP address
+        if ip_pattern.match(query):
+            # Redirect to IP lookup with the query as POST data
+            request.session['ip_lookup_query'] = query
+            return redirect('ip_lookup')
+        
+        # Check if it's a domain
+        elif domain_pattern.match(query):
+            # Redirect to domain lookup with the query as POST data
+            request.session['domain_lookup_query'] = query
+            return redirect('domain_lookup')
+        
+        else:
+            messages.error(request, 'Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or domain (e.g., example.com).')
+            return redirect('dashboard')
+    
+    return redirect('dashboard')
+
+@login_required
 def dashboard_view(request):
     # Get dashboard statistics
     stats = get_dashboard_stats()
@@ -101,10 +135,55 @@ def domain_lookup_view(request):
         'has_error': False,
     }
 
-    if request.method == 'POST':
+    # Check if there's a query from unified search
+    if 'domain_lookup_query' in request.session:
+        domain = request.session.pop('domain_lookup_query')
+        # Process the domain lookup
+        try:
+            otx_service = OTXService()
+            result = otx_service.lookup_domain(domain)
+
+            if not result.get('error', False):
+                # Save search history
+                SearchHistory.objects.create(
+                    user=request.user,
+                    search_type='domain',
+                    query=domain,
+                    result_found=result.get('found', False),
+                    threat_detected=result.get('is_malicious', False)
+                )
+
+                # If malicious, log as a threat
+                if result.get('is_malicious', False):
+                    pulse_count = result.get('pulse_count', 0)
+                    ThreatLog.objects.create(
+                        threat_type='phishing',
+                        target=domain,
+                        severity='high' if pulse_count > 5 else 'medium',
+                        description=f"Malicious domain detected via OTX. Found in {pulse_count} pulse(s).",
+                        source='AlienVault OTX',
+                        is_active=True
+                    )
+
+                context['result'] = result
+                messages.success(request, f'Successfully analyzed domain: {domain}')
+            else:
+                messages.error(request, 'Unable to retrieve threat intelligence data for this domain. Please try again later.')
+                context['has_error'] = True
+                context['domain'] = domain
+
+        except ValueError:
+            messages.error(request, 'Service configuration error. Please contact support.')
+            context['has_error'] = True
+        except Exception:
+            messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+            context['has_error'] = True
+            context['domain'] = domain
+
+    elif request.method == 'POST':
         domain = request.POST.get('domain', '').strip().lower()
 
-        # Simple domain validation (no scheme, no path)
+        # Simple domain validation
         domain_pattern = re.compile(r'^(?!-)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$')
 
         if not domain:
@@ -128,7 +207,7 @@ def domain_lookup_view(request):
                         threat_detected=result.get('is_malicious', False)
                     )
 
-                    # If malicious, log as a threat (phishing by default)
+                    # If malicious, log as a threat
                     if result.get('is_malicious', False):
                         pulse_count = result.get('pulse_count', 0)
                         ThreatLog.objects.create(
@@ -143,10 +222,7 @@ def domain_lookup_view(request):
                     context['result'] = result
                     messages.success(request, f'Successfully analyzed domain: {domain}')
                 else:
-                    messages.error(
-                        request,
-                        'Unable to retrieve threat intelligence data for this domain. Please try again later.'
-                    )
+                    messages.error(request, 'Unable to retrieve threat intelligence data for this domain. Please try again later.')
                     context['has_error'] = True
                     context['domain'] = domain
 
@@ -154,10 +230,7 @@ def domain_lookup_view(request):
                 messages.error(request, 'Service configuration error. Please contact support.')
                 context['has_error'] = True
             except Exception:
-                messages.error(
-                    request,
-                    'Unable to connect to threat intelligence service. Please check your internet connection and try again.'
-                )
+                messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
                 context['has_error'] = True
                 context['domain'] = domain
 
@@ -182,7 +255,89 @@ def ip_lookup_view(request):
         'has_error': False,
     }
     
-    if request.method == 'POST':
+    # Check if there's a query from unified search
+    if 'ip_lookup_query' in request.session:
+        ip_address = request.session.pop('ip_lookup_query')
+        # Process the IP lookup
+        try:
+            # Initialize services
+            otx_service = OTXService()
+            
+            # Perform OTX lookup
+            result = otx_service.lookup_ip(ip_address)
+            
+            # Perform AbuseIPDB lookup
+            abuse_result = None
+            try:
+                abuseipdb_service = AbuseIPDBService()
+                abuse_result = abuseipdb_service.lookup_ip(ip_address)
+                
+                # Merge AbuseIPDB data into result
+                if not abuse_result.get('error', False):
+                    result['abuseipdb'] = abuse_result
+                    # Update is_malicious if AbuseIPDB also flags it
+                    if abuse_result.get('is_abusive', False):
+                        result['is_malicious'] = True
+                else:
+                    result['abuseipdb'] = None
+            except (ValueError, Exception) as abuse_error:
+                logger.warning(f"AbuseIPDB lookup failed for {ip_address}: {str(abuse_error)}")
+                result['abuseipdb'] = None
+            
+            # Only save search history if API call succeeded
+            if not result.get('error', False):
+                # Determine if threat detected
+                threat_detected = result.get('is_malicious', False) or (
+                    result.get('abuseipdb') and result['abuseipdb'].get('is_abusive', False)
+                )
+                
+                # Save search history
+                SearchHistory.objects.create(
+                    user=request.user,
+                    search_type='ip',
+                    query=ip_address,
+                    result_found=result.get('found', False),
+                    threat_detected=threat_detected
+                )
+                
+                # If malicious, create a ThreatLog entry
+                if threat_detected:
+                    pulse_count = result.get('pulse_count', 0)
+                    abuse_score = result.get('abuseipdb', {}).get('abuse_confidence_score', 0) if result.get('abuseipdb') else 0
+                    
+                    description_parts = []
+                    if pulse_count > 0:
+                        description_parts.append(f"Found in {pulse_count} OTX threat intelligence pulse(s)")
+                    if abuse_score > 0:
+                        description_parts.append(f"AbuseIPDB confidence score: {abuse_score}%")
+                    
+                    description = f"Malicious IP detected. {' | '.join(description_parts)}."
+                    
+                    ThreatLog.objects.create(
+                        threat_type='malware',
+                        target=ip_address,
+                        severity='high' if (pulse_count > 5 or abuse_score > 75) else 'medium',
+                        description=description,
+                        source='AlienVault OTX & AbuseIPDB',
+                        is_active=True
+                    )
+                
+                context['result'] = result
+                messages.success(request, f'Successfully analyzed IP address: {ip_address}')
+            else:
+                messages.error(request, 'Unable to retrieve threat intelligence data. Please check your connection and try again.')
+                context['has_error'] = True
+                context['ip_address'] = ip_address
+                
+        except ValueError:
+            messages.error(request, 'Service configuration error. Please contact support.')
+            context['has_error'] = True
+        except Exception:
+            messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+            context['has_error'] = True
+            context['ip_address'] = ip_address
+    
+    elif request.method == 'POST':
         ip_address = request.POST.get('ip_address', '').strip()
         
         # Validate IP address format
@@ -202,7 +357,7 @@ def ip_lookup_view(request):
                 # Perform OTX lookup
                 result = otx_service.lookup_ip(ip_address)
                 
-                # Perform AbuseIPDB lookup (don't fail if this errors)
+                # Perform AbuseIPDB lookup
                 abuse_result = None
                 try:
                     abuseipdb_service = AbuseIPDBService()
@@ -217,18 +372,17 @@ def ip_lookup_view(request):
                     else:
                         result['abuseipdb'] = None
                 except (ValueError, Exception) as abuse_error:
-                    # AbuseIPDB failed but don't break the whole lookup
                     logger.warning(f"AbuseIPDB lookup failed for {ip_address}: {str(abuse_error)}")
                     result['abuseipdb'] = None
                 
-                # Only save search history if API call succeeded (no error)
+                # Only save search history if API call succeeded
                 if not result.get('error', False):
-                    # Determine if threat detected (from either source)
+                    # Determine if threat detected
                     threat_detected = result.get('is_malicious', False) or (
                         result.get('abuseipdb') and result['abuseipdb'].get('is_abusive', False)
                     )
                     
-                    # Save search history only when API call was successful
+                    # Save search history
                     SearchHistory.objects.create(
                         user=request.user,
                         search_type='ip',
@@ -237,12 +391,11 @@ def ip_lookup_view(request):
                         threat_detected=threat_detected
                     )
                     
-                    # If malicious, optionally create a ThreatLog entry
+                    # If malicious, create a ThreatLog entry
                     if threat_detected:
                         pulse_count = result.get('pulse_count', 0)
                         abuse_score = result.get('abuseipdb', {}).get('abuse_confidence_score', 0) if result.get('abuseipdb') else 0
                         
-                        # Build description with both sources
                         description_parts = []
                         if pulse_count > 0:
                             description_parts.append(f"Found in {pulse_count} OTX threat intelligence pulse(s)")
@@ -263,17 +416,14 @@ def ip_lookup_view(request):
                     context['result'] = result
                     messages.success(request, f'Successfully analyzed IP address: {ip_address}')
                 else:
-                    # API call failed - show user-friendly error
                     messages.error(request, 'Unable to retrieve threat intelligence data. Please check your connection and try again.')
                     context['has_error'] = True
                     context['ip_address'] = ip_address
                     
             except ValueError:
-                # Configuration error - show generic message
                 messages.error(request, 'Service configuration error. Please contact support.')
                 context['has_error'] = True
             except Exception:
-                # Network errors, etc. - show user-friendly message
                 messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
                 context['has_error'] = True
                 context['ip_address'] = ip_address
