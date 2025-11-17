@@ -30,6 +30,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 OTX_API_KEY = config('OTX_API_KEY', default='')
+# Add after OTX_API_KEY
+ABUSEIPDB_API_KEY = config('ABUSEIPDB_API_KEY', default='')
 
 # Application definition
 

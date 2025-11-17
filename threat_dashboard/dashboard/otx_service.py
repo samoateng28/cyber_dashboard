@@ -151,6 +151,97 @@ class OTXService:
                 'error': True,
                 'is_malicious': False,
             }
+    def lookup_domain(self, domain):
+        """
+        Look up a domain in OTX
+        """
+        try:
+            endpoint_url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general"
+            logger.info(f"[OTX API] Domain endpoint: {endpoint_url}")
+            logger.info(f"[OTX API] Domain: {domain}")
+
+            full_data = self.otx.get_indicator_details_by_section(
+                indicator_type=IndicatorTypes.DOMAIN,
+                indicator=domain,
+                section="general"
+            )
+
+            logger.info(f"[OTX API][DOMAIN] Response type: {type(full_data)}")
+            logger.info(f"[OTX API][DOMAIN] Response content: {json.dumps(full_data, indent=2, default=str)}")
+
+            if not isinstance(full_data, dict):
+                logger.error(f"[OTX API][DOMAIN] Non-dict response for {domain}")
+                return {
+                    'domain': domain,
+                    'found': False,
+                    'error': True,
+                    'is_malicious': False,
+                }
+
+            # Pulse info
+            pulse_info = full_data.get('pulse_info', {})
+            if not isinstance(pulse_info, dict):
+                pulse_info = {}
+            pulse_list = pulse_info.get('pulses', [])
+            pulse_count = pulse_info.get('count', 0)
+
+            # Geo-like info (domains also carry some location / meta)
+            geo_data = {
+                'country_name': full_data.get('country_name'),
+                'country_code': full_data.get('country_code'),
+                'city': full_data.get('city'),
+                'region': full_data.get('region'),
+                'subdivision': full_data.get('subdivision'),
+            }
+
+            # Reputation (if present)
+            reputation_value = full_data.get('reputation', 0)
+
+            # Passive DNS for domain
+            passive_dns_data = {}
+            try:
+                logger.info(f"[OTX API][DOMAIN] Fetching passive_dns for {domain}")
+                passive_dns_data = self.otx.get_indicator_details_by_section(
+                    indicator_type=IndicatorTypes.DOMAIN,
+                    indicator=domain,
+                    section="passive_dns"
+                )
+            except Exception as e:
+                logger.warning(f"[OTX API][DOMAIN] passive_dns error for {domain}: {str(e)}")
+                passive_dns_data = {}
+
+            passive_dns_list = []
+            if isinstance(passive_dns_data, dict):
+                passive_dns_list = passive_dns_data.get('passive_dns', [])
+
+            result = {
+                'domain': domain,
+                'found': True,
+                'general': {
+                    'indicator': full_data.get('indicator'),
+                    'type': full_data.get('type'),
+                    'whois': full_data.get('whois'),
+                },
+                'pulses': pulse_list if isinstance(pulse_list, list) else [],
+                'pulse_count': int(pulse_count) if isinstance(pulse_count, (int, float)) else 0,
+                'reputation': reputation_value,
+                'geo': geo_data,
+                'passive_dns': passive_dns_list if isinstance(passive_dns_list, list) else [],
+                'is_malicious': pulse_count > 0,
+                'last_seen': self._get_last_seen(pulse_list),
+            }
+
+            logger.info(f"[OTX API][DOMAIN] Final result: {json.dumps(result, indent=2, default=str)}")
+            return result
+
+        except Exception as e:
+            logger.error(f"[OTX API][DOMAIN] Exception for {domain}: {str(e)}")
+            return {
+                'domain': domain,
+                'found': False,
+                'error': True,
+                'is_malicious': False,
+            }
     
     def _get_last_seen(self, pulses):
         """Extract the most recent pulse date"""
