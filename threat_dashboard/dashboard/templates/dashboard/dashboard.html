@@ -19,10 +19,16 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <span class="stat-label">Total Threats</span>
+                            <span class="stat-label">Active Threats</span>
                             <h2 class="stat-value">{{ stats.total_threats|default:0 }}</h2>
                             <small class="stat-subtitle">
-                                <i class="bi bi-arrow-up"></i> Active monitoring
+                                {% if analytics.change_direction == 'up' %}
+                                <i class="bi bi-arrow-up"></i> {{ analytics.change_percentage }}% from yesterday
+                                {% elif analytics.change_direction == 'down' %}
+                                <i class="bi bi-arrow-down"></i> {{ analytics.change_percentage|floatformat:1 }}% from yesterday
+                                {% else %}
+                                <i class="bi bi-dash"></i> No change
+                                {% endif %}
                             </small>
                         </div>
                         <div class="stat-icon-colored">
@@ -41,7 +47,7 @@
                             <span class="stat-label">Malicious IPs</span>
                             <h2 class="stat-value">{{ stats.malicious_ips|default:0 }}</h2>
                             <small class="stat-subtitle">
-                                <i class="bi bi-shield-exclamation"></i> Identified
+                                <i class="bi bi-shield-exclamation"></i> Active threats
                             </small>
                         </div>
                         <div class="stat-icon-colored">
@@ -60,7 +66,7 @@
                             <span class="stat-label">Blocked Domains</span>
                             <h2 class="stat-value">{{ stats.blocked_domains|default:0 }}</h2>
                             <small class="stat-subtitle">
-                                <i class="bi bi-shield-check"></i> Protected
+                                <i class="bi bi-shield-check"></i> Phishing detected
                             </small>
                         </div>
                         <div class="stat-icon-colored">
@@ -79,7 +85,7 @@
                             <span class="stat-label">Scans Today</span>
                             <h2 class="stat-value">{{ stats.scans_today|default:0 }}</h2>
                             <small class="stat-subtitle">
-                                <i class="bi bi-check-circle"></i> Real-time
+                                <i class="bi bi-search"></i> {{ analytics.detection_rate }}% threat rate
                             </small>
                         </div>
                         <div class="stat-icon-colored">
@@ -91,6 +97,23 @@
         </div>
     </div>
 
+    <!-- Analytics Summary -->
+    {% if analytics.critical_high_count > 0 %}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <div>
+                    <strong>{{ analytics.critical_high_count }} critical/high severity threat{{ analytics.critical_high_count|pluralize }}</strong> require{{ analytics.critical_high_count|pluralize:"s," }} attention.
+                    {% if analytics.most_common_threat %}
+                    Most common threat type this week: <strong>{{ analytics.most_common_threat|title }}</strong>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Charts Section -->
     <div class="row g-3 mb-4">
         <div class="col-lg-8">
@@ -101,7 +124,7 @@
                             <h6 class="card-title mb-1">Threat Trend</h6>
                             <small class="text-muted">Last 7 days activity</small>
                         </div>
-                        <span class="badge-live">Live</span>
+                        <span class="badge-live">Live Data</span>
                     </div>
                     <canvas id="trendChart" height="70"></canvas>
                 </div>
@@ -112,7 +135,14 @@
             <div class="card chart-card-clean">
                 <div class="card-body">
                     <h6 class="card-title mb-3">Threat Distribution</h6>
+                    {% if chart_data.threat_types %}
                     <canvas id="threatTypeChart"></canvas>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-pie-chart text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-2 mb-0">No threat data available</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -125,7 +155,7 @@
                 <div class="card-body p-0">
                     <div class="table-header">
                         <h6 class="mb-0">Recent Threat Activity</h6>
-                        <a href="#" class="btn-view-all">View all <i class="bi bi-arrow-right"></i></a>
+                        <span class="badge bg-secondary">{{ recent_threats|length }} recent</span>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-clean mb-0">
@@ -134,7 +164,7 @@
                                     <th>Type</th>
                                     <th>Target</th>
                                     <th>Severity</th>
-                                    <th>Time</th>
+                                    <th>Detected</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -147,7 +177,9 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-target">{{ threat.target|truncatechars:30 }}</span>
+                                        <span class="text-target" title="{{ threat.target }}">
+                                            {{ threat.target|truncatechars:30 }}
+                                        </span>
                                     </td>
                                     <td>
                                         {% if threat.severity == 'critical' %}
@@ -161,13 +193,17 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <small class="text-muted">{{ threat.detected_at|timesince }} ago</small>
+                                        <small class="text-muted" title="{{ threat.detected_at }}">
+                                            {{ threat.detected_at|timesince }} ago
+                                        </small>
                                     </td>
                                     <td>
                                         {% if threat.is_active %}
                                         <span class="status-dot status-active"></span>
+                                        <small>Active</small>
                                         {% else %}
                                         <span class="status-dot status-resolved"></span>
+                                        <small>Resolved</small>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -176,7 +212,8 @@
                                     <td colspan="5" class="text-center py-5">
                                         <div class="empty-state">
                                             <i class="bi bi-shield-check"></i>
-                                            <p class="mb-0 mt-2">No threats detected</p>
+                                            <p class="mb-0 mt-2">No threats detected yet</p>
+                                            <small class="text-muted">Start scanning IPs or domains to detect threats</small>
                                         </div>
                                     </td>
                                 </tr>
@@ -192,7 +229,39 @@
             <div class="card chart-card-clean mb-3">
                 <div class="card-body">
                     <h6 class="card-title mb-3">Severity Breakdown</h6>
+                    {% if chart_data.severity %}
                     <canvas id="severityChart"></canvas>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-bar-chart text-muted" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-2 mb-0">No data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Weekly Summary Card -->
+            <div class="card chart-card-clean mb-3">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Weekly Summary</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Searches</span>
+                        <strong>{{ analytics.weekly_searches }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Detection Rate</span>
+                        <strong>{{ analytics.detection_rate }}%</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Critical/High</span>
+                        <strong class="text-danger">{{ analytics.critical_high_count }}</strong>
+                    </div>
+                    {% if analytics.most_common_threat %}
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Top Threat</span>
+                        <strong>{{ analytics.most_common_threat|title }}</strong>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -200,18 +269,14 @@
                 <div class="card-body">
                     <h6 class="card-title mb-3">Quick Actions</h6>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-action-primary">
+                        <a href="{% url 'ip_lookup' %}" class="btn btn-action-primary">
                             <i class="bi bi-search"></i>
                             <span>Scan IP Address</span>
-                        </button>
-                        <button class="btn btn-action-secondary">
+                        </a>
+                        <a href="{% url 'domain_lookup' %}" class="btn btn-action-secondary">
                             <i class="bi bi-link-45deg"></i>
                             <span>Check Domain</span>
-                        </button>
-                        <button class="btn btn-action-secondary">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span>View Reports</span>
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -224,7 +289,6 @@
 {{ chart_data|json_script:"chart-data" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Pass Django data to JavaScript
     const chartDataElement = document.getElementById('chart-data');
     const chartData = chartDataElement ? JSON.parse(chartDataElement.textContent) : {
         trend: [],
@@ -232,7 +296,6 @@
         severity: []
     };
     
-    // Initialize charts when page loads
     document.addEventListener('DOMContentLoaded', function() {
         initDashboardCharts(chartData);
     });

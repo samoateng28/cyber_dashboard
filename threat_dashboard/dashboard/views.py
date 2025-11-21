@@ -3,14 +3,15 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import models
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from .forms import LoginForm
-from .models import ThreatLog, ThreatStatistics
-from .utils import get_dashboard_stats
+from .models import ThreatLog, ThreatStatistics, SearchHistory
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from .otx_service import OTXService
-from .models import SearchHistory
 import re
 import logging
 from .abuseipdb_service import AbuseIPDBService
@@ -39,10 +40,12 @@ def login_view(request):
     
     return render(request, 'dashboard/login.html', {'form': form})
 
+
 def logout_view(request):
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('login')
+
 
 @login_required
 def unified_search_view(request):
@@ -54,76 +57,169 @@ def unified_search_view(request):
             messages.warning(request, 'Please enter an IP address or domain to search.')
             return redirect('dashboard')
         
-        # IP address pattern (IPv4)
         ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
-        
-        # Domain pattern (no scheme, no path)
         domain_pattern = re.compile(r'^(?!-)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$')
         
-        # Check if it's an IP address
         if ip_pattern.match(query):
-            # Redirect to IP lookup with the query as POST data
             request.session['ip_lookup_query'] = query
             return redirect('ip_lookup')
-        
-        # Check if it's a domain
         elif domain_pattern.match(query):
-            # Redirect to domain lookup with the query as POST data
             request.session['domain_lookup_query'] = query
             return redirect('domain_lookup')
-        
         else:
-            messages.error(request, 'Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or domain (e.g., example.com).')
+            messages.error(request, 'Invalid input. Please enter a valid IP address or domain.')
             return redirect('dashboard')
     
     return redirect('dashboard')
 
+
+def get_real_dashboard_stats():
+    """Calculate real statistics from the database"""
+    today = timezone.now().date()
+    
+    # Total active threats
+    total_threats = ThreatLog.objects.filter(is_active=True).count()
+    
+    # Malicious IPs (threats with IP-like targets that are malware type)
+    ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+    malicious_ips = ThreatLog.objects.filter(
+        is_active=True,
+        threat_type='malware'
+    ).filter(target__regex=ip_pattern).count()
+    
+    # Blocked domains (phishing threats)
+    blocked_domains = ThreatLog.objects.filter(
+        is_active=True,
+        threat_type='phishing'
+    ).count()
+    
+    # Scans today (searches performed today)
+    scans_today = SearchHistory.objects.filter(
+        searched_at__date=today
+    ).count()
+    
+    return {
+        'total_threats': total_threats,
+        'malicious_ips': malicious_ips,
+        'blocked_domains': blocked_domains,
+        'scans_today': scans_today,
+    }
+
+
 @login_required
 def dashboard_view(request):
-    # Get dashboard statistics
-    stats = get_dashboard_stats()
+    # Get real dashboard statistics
+    stats = get_real_dashboard_stats()
     
     # Get recent threats (last 10)
     recent_threats = ThreatLog.objects.all()[:10]
     
-    # Get threat distribution data for charts
-    threat_types = ThreatLog.objects.values('threat_type').annotate(
-        count=models.Count('threat_type')
-    )
+    # Get threat distribution by type
+    threat_types = list(ThreatLog.objects.values('threat_type').annotate(
+        count=Count('threat_type')
+    ).order_by('-count'))
     
     # Get severity distribution
-    severity_dist = ThreatLog.objects.values('severity').annotate(
-        count=models.Count('severity')
-    )
+    severity_dist = list(ThreatLog.objects.values('severity').annotate(
+        count=Count('severity')
+    ).order_by('-count'))
     
-    # Get last 7 days statistics for trend chart
+    # Get last 7 days trend data from actual ThreatLog entries
     last_7_days = []
     for i in range(6, -1, -1):
-        date = datetime.now().date() - timedelta(days=i)
+        date = timezone.now().date() - timedelta(days=i)
+        
+        # Count threats detected on this day
+        day_count = ThreatLog.objects.filter(
+            detected_at__date=date
+        ).count()
+        
+        # Also check ThreatStatistics if available
         day_stats = ThreatStatistics.objects.filter(date=date).first()
+        if day_stats and day_stats.total_threats > day_count:
+            day_count = day_stats.total_threats
+        
         last_7_days.append({
             'date': date.strftime('%b %d'),
-            'count': day_stats.total_threats if day_stats else 0
+            'count': day_count
         })
-    
-    # Process data with pandas
-    df_threats = pd.DataFrame(list(threat_types))
-    df_severity = pd.DataFrame(list(severity_dist))
     
     # Prepare chart data
     chart_data = {
-        'threat_types': list(df_threats.to_dict('records')) if not df_threats.empty else [],
-        'severity': list(df_severity.to_dict('records')) if not df_severity.empty else [],
+        'threat_types': threat_types if threat_types else [],
+        'severity': severity_dist if severity_dist else [],
         'trend': last_7_days
     }
+    
+    # Get additional analytics
+    analytics = get_threat_analytics()
     
     context = {
         'user': request.user,
         'stats': stats,
         'recent_threats': recent_threats,
         'chart_data': chart_data,
+        'analytics': analytics,
     }
     return render(request, 'dashboard/dashboard.html', context)
+
+
+def get_threat_analytics():
+    """Get additional analytics for the dashboard"""
+    today = timezone.now().date()
+    yesterday = today - timedelta(days=1)
+    last_week = today - timedelta(days=7)
+    
+    # Threats today vs yesterday
+    threats_today = ThreatLog.objects.filter(detected_at__date=today).count()
+    threats_yesterday = ThreatLog.objects.filter(detected_at__date=yesterday).count()
+    
+    # Calculate percentage change
+    if threats_yesterday > 0:
+        change_pct = ((threats_today - threats_yesterday) / threats_yesterday) * 100
+    else:
+        change_pct = 100 if threats_today > 0 else 0
+    
+    # Most common threat type this week
+    common_threat = ThreatLog.objects.filter(
+        detected_at__date__gte=last_week
+    ).values('threat_type').annotate(
+        count=Count('threat_type')
+    ).order_by('-count').first()
+    
+    # Critical/High severity count
+    critical_high = ThreatLog.objects.filter(
+        is_active=True,
+        severity__in=['critical', 'high']
+    ).count()
+    
+    # Recent search activity
+    recent_searches = SearchHistory.objects.filter(
+        searched_at__date__gte=last_week
+    ).count()
+    
+    # Threat detection rate (searches that found threats)
+    total_searches = SearchHistory.objects.filter(
+        searched_at__date__gte=last_week
+    ).count()
+    threat_searches = SearchHistory.objects.filter(
+        searched_at__date__gte=last_week,
+        threat_detected=True
+    ).count()
+    
+    detection_rate = (threat_searches / total_searches * 100) if total_searches > 0 else 0
+    
+    return {
+        'threats_today': threats_today,
+        'threats_yesterday': threats_yesterday,
+        'change_percentage': round(change_pct, 1),
+        'change_direction': 'up' if change_pct > 0 else 'down' if change_pct < 0 else 'same',
+        'most_common_threat': common_threat['threat_type'] if common_threat else None,
+        'critical_high_count': critical_high,
+        'weekly_searches': recent_searches,
+        'detection_rate': round(detection_rate, 1),
+    }
+
 
 @login_required
 def domain_lookup_view(request):
@@ -135,16 +231,13 @@ def domain_lookup_view(request):
         'has_error': False,
     }
 
-    # Check if there's a query from unified search
     if 'domain_lookup_query' in request.session:
         domain = request.session.pop('domain_lookup_query')
-        # Process the domain lookup
         try:
             otx_service = OTXService()
             result = otx_service.lookup_domain(domain)
 
             if not result.get('error', False):
-                # Save search history
                 SearchHistory.objects.create(
                     user=request.user,
                     search_type='domain',
@@ -153,7 +246,6 @@ def domain_lookup_view(request):
                     threat_detected=result.get('is_malicious', False)
                 )
 
-                # If malicious, log as a threat
                 if result.get('is_malicious', False):
                     pulse_count = result.get('pulse_count', 0)
                     ThreatLog.objects.create(
@@ -168,29 +260,27 @@ def domain_lookup_view(request):
                 context['result'] = result
                 messages.success(request, f'Successfully analyzed domain: {domain}')
             else:
-                messages.error(request, 'Unable to retrieve threat intelligence data for this domain. Please try again later.')
+                messages.error(request, 'Unable to retrieve threat intelligence data.')
                 context['has_error'] = True
                 context['domain'] = domain
 
         except ValueError:
-            messages.error(request, 'Service configuration error. Please contact support.')
+            messages.error(request, 'Service configuration error.')
             context['has_error'] = True
         except Exception:
-            messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+            messages.error(request, 'Unable to connect to threat intelligence service.')
             context['has_error'] = True
             context['domain'] = domain
 
     elif request.method == 'POST':
         domain = request.POST.get('domain', '').strip().lower()
-
-        # Simple domain validation
         domain_pattern = re.compile(r'^(?!-)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$')
 
         if not domain:
-            messages.error(request, 'Please enter a domain to search (e.g., example.com).')
+            messages.error(request, 'Please enter a domain to search.')
             context['has_error'] = True
         elif not domain_pattern.match(domain):
-            messages.error(request, 'Invalid domain format. Please enter a valid domain (e.g., example.com).')
+            messages.error(request, 'Invalid domain format.')
             context['has_error'] = True
         else:
             try:
@@ -198,7 +288,6 @@ def domain_lookup_view(request):
                 result = otx_service.lookup_domain(domain)
 
                 if not result.get('error', False):
-                    # Save search history
                     SearchHistory.objects.create(
                         user=request.user,
                         search_type='domain',
@@ -207,7 +296,6 @@ def domain_lookup_view(request):
                         threat_detected=result.get('is_malicious', False)
                     )
 
-                    # If malicious, log as a threat
                     if result.get('is_malicious', False):
                         pulse_count = result.get('pulse_count', 0)
                         ThreatLog.objects.create(
@@ -222,27 +310,26 @@ def domain_lookup_view(request):
                     context['result'] = result
                     messages.success(request, f'Successfully analyzed domain: {domain}')
                 else:
-                    messages.error(request, 'Unable to retrieve threat intelligence data for this domain. Please try again later.')
+                    messages.error(request, 'Unable to retrieve threat intelligence data.')
                     context['has_error'] = True
                     context['domain'] = domain
 
             except ValueError:
-                messages.error(request, 'Service configuration error. Please contact support.')
+                messages.error(request, 'Service configuration error.')
                 context['has_error'] = True
             except Exception:
-                messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+                messages.error(request, 'Unable to connect to threat intelligence service.')
                 context['has_error'] = True
                 context['domain'] = domain
 
-    # Recent domain searches
     recent_searches = SearchHistory.objects.filter(
         user=request.user,
         search_type='domain'
     ).order_by('-searched_at')[:10]
 
     context['recent_searches'] = recent_searches
-
     return render(request, 'dashboard/domain_lookup.html', context)
+
 
 @login_required
 def ip_lookup_view(request):
@@ -255,43 +342,32 @@ def ip_lookup_view(request):
         'has_error': False,
     }
     
-    # Check if there's a query from unified search
     if 'ip_lookup_query' in request.session:
         ip_address = request.session.pop('ip_lookup_query')
-        # Process the IP lookup
         try:
-            # Initialize services
             otx_service = OTXService()
-            
-            # Perform OTX lookup
             result = otx_service.lookup_ip(ip_address)
             
-            # Perform AbuseIPDB lookup
             abuse_result = None
             try:
                 abuseipdb_service = AbuseIPDBService()
                 abuse_result = abuseipdb_service.lookup_ip(ip_address)
                 
-                # Merge AbuseIPDB data into result
                 if not abuse_result.get('error', False):
                     result['abuseipdb'] = abuse_result
-                    # Update is_malicious if AbuseIPDB also flags it
                     if abuse_result.get('is_abusive', False):
                         result['is_malicious'] = True
                 else:
                     result['abuseipdb'] = None
-            except (ValueError, Exception) as abuse_error:
-                logger.warning(f"AbuseIPDB lookup failed for {ip_address}: {str(abuse_error)}")
+            except (ValueError, Exception) as e:
+                logger.warning(f"AbuseIPDB lookup failed: {str(e)}")
                 result['abuseipdb'] = None
             
-            # Only save search history if API call succeeded
             if not result.get('error', False):
-                # Determine if threat detected
                 threat_detected = result.get('is_malicious', False) or (
                     result.get('abuseipdb') and result['abuseipdb'].get('is_abusive', False)
                 )
                 
-                # Save search history
                 SearchHistory.objects.create(
                     user=request.user,
                     search_type='ip',
@@ -300,89 +376,75 @@ def ip_lookup_view(request):
                     threat_detected=threat_detected
                 )
                 
-                # If malicious, create a ThreatLog entry
                 if threat_detected:
                     pulse_count = result.get('pulse_count', 0)
                     abuse_score = result.get('abuseipdb', {}).get('abuse_confidence_score', 0) if result.get('abuseipdb') else 0
                     
-                    description_parts = []
+                    desc_parts = []
                     if pulse_count > 0:
-                        description_parts.append(f"Found in {pulse_count} OTX threat intelligence pulse(s)")
+                        desc_parts.append(f"Found in {pulse_count} OTX pulse(s)")
                     if abuse_score > 0:
-                        description_parts.append(f"AbuseIPDB confidence score: {abuse_score}%")
-                    
-                    description = f"Malicious IP detected. {' | '.join(description_parts)}."
+                        desc_parts.append(f"AbuseIPDB score: {abuse_score}%")
                     
                     ThreatLog.objects.create(
                         threat_type='malware',
                         target=ip_address,
                         severity='high' if (pulse_count > 5 or abuse_score > 75) else 'medium',
-                        description=description,
+                        description=f"Malicious IP detected. {' | '.join(desc_parts)}.",
                         source='AlienVault OTX & AbuseIPDB',
                         is_active=True
                     )
                 
                 context['result'] = result
-                messages.success(request, f'Successfully analyzed IP address: {ip_address}')
+                messages.success(request, f'Successfully analyzed IP: {ip_address}')
             else:
-                messages.error(request, 'Unable to retrieve threat intelligence data. Please check your connection and try again.')
+                messages.error(request, 'Unable to retrieve threat intelligence data.')
                 context['has_error'] = True
                 context['ip_address'] = ip_address
                 
         except ValueError:
-            messages.error(request, 'Service configuration error. Please contact support.')
+            messages.error(request, 'Service configuration error.')
             context['has_error'] = True
         except Exception:
-            messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+            messages.error(request, 'Unable to connect to threat intelligence service.')
             context['has_error'] = True
             context['ip_address'] = ip_address
     
     elif request.method == 'POST':
         ip_address = request.POST.get('ip_address', '').strip()
-        
-        # Validate IP address format
         ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
         
         if not ip_address:
-            messages.error(request, 'Please enter an IP address to search.')
+            messages.error(request, 'Please enter an IP address.')
             context['has_error'] = True
         elif not ip_pattern.match(ip_address):
-            messages.error(request, 'Invalid IP address format. Please enter a valid IPv4 address (e.g., 192.168.1.1).')
+            messages.error(request, 'Invalid IP address format.')
             context['has_error'] = True
         else:
             try:
-                # Initialize services
                 otx_service = OTXService()
-                
-                # Perform OTX lookup
                 result = otx_service.lookup_ip(ip_address)
                 
-                # Perform AbuseIPDB lookup
                 abuse_result = None
                 try:
                     abuseipdb_service = AbuseIPDBService()
                     abuse_result = abuseipdb_service.lookup_ip(ip_address)
                     
-                    # Merge AbuseIPDB data into result
                     if not abuse_result.get('error', False):
                         result['abuseipdb'] = abuse_result
-                        # Update is_malicious if AbuseIPDB also flags it
                         if abuse_result.get('is_abusive', False):
                             result['is_malicious'] = True
                     else:
                         result['abuseipdb'] = None
-                except (ValueError, Exception) as abuse_error:
-                    logger.warning(f"AbuseIPDB lookup failed for {ip_address}: {str(abuse_error)}")
+                except (ValueError, Exception) as e:
+                    logger.warning(f"AbuseIPDB lookup failed: {str(e)}")
                     result['abuseipdb'] = None
                 
-                # Only save search history if API call succeeded
                 if not result.get('error', False):
-                    # Determine if threat detected
                     threat_detected = result.get('is_malicious', False) or (
                         result.get('abuseipdb') and result['abuseipdb'].get('is_abusive', False)
                     )
                     
-                    # Save search history
                     SearchHistory.objects.create(
                         user=request.user,
                         search_type='ip',
@@ -391,49 +453,44 @@ def ip_lookup_view(request):
                         threat_detected=threat_detected
                     )
                     
-                    # If malicious, create a ThreatLog entry
                     if threat_detected:
                         pulse_count = result.get('pulse_count', 0)
                         abuse_score = result.get('abuseipdb', {}).get('abuse_confidence_score', 0) if result.get('abuseipdb') else 0
                         
-                        description_parts = []
+                        desc_parts = []
                         if pulse_count > 0:
-                            description_parts.append(f"Found in {pulse_count} OTX threat intelligence pulse(s)")
+                            desc_parts.append(f"Found in {pulse_count} OTX pulse(s)")
                         if abuse_score > 0:
-                            description_parts.append(f"AbuseIPDB confidence score: {abuse_score}%")
-                        
-                        description = f"Malicious IP detected. {' | '.join(description_parts)}."
+                            desc_parts.append(f"AbuseIPDB score: {abuse_score}%")
                         
                         ThreatLog.objects.create(
                             threat_type='malware',
                             target=ip_address,
                             severity='high' if (pulse_count > 5 or abuse_score > 75) else 'medium',
-                            description=description,
+                            description=f"Malicious IP detected. {' | '.join(desc_parts)}.",
                             source='AlienVault OTX & AbuseIPDB',
                             is_active=True
                         )
                     
                     context['result'] = result
-                    messages.success(request, f'Successfully analyzed IP address: {ip_address}')
+                    messages.success(request, f'Successfully analyzed IP: {ip_address}')
                 else:
-                    messages.error(request, 'Unable to retrieve threat intelligence data. Please check your connection and try again.')
+                    messages.error(request, 'Unable to retrieve threat intelligence data.')
                     context['has_error'] = True
                     context['ip_address'] = ip_address
                     
             except ValueError:
-                messages.error(request, 'Service configuration error. Please contact support.')
+                messages.error(request, 'Service configuration error.')
                 context['has_error'] = True
             except Exception:
-                messages.error(request, 'Unable to connect to threat intelligence service. Please check your internet connection and try again.')
+                messages.error(request, 'Unable to connect to threat intelligence service.')
                 context['has_error'] = True
                 context['ip_address'] = ip_address
     
-    # Get recent search history for this user
     recent_searches = SearchHistory.objects.filter(
         user=request.user,
         search_type='ip'
     ).order_by('-searched_at')[:10]
     
     context['recent_searches'] = recent_searches
-    
     return render(request, 'dashboard/ip_lookup.html', context)
