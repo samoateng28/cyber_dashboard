@@ -57,7 +57,34 @@ python manage.py createsuperuser
 ```
 Follow the prompts to set up your admin username, email, and password.
 
-### 6. Start Development Server
+### 6. Populate Fake Data (Optional)
+
+For testing purposes, you can populate the database with fake threat data:
+
+```bash
+python manage.py populate_fake_data
+```
+
+#### Available Options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--threats` | int | 50 | Number of fake threats to generate |
+| `--days` | int | 30 | Number of days of statistics to generate |
+
+#### Examples:
+```bash
+# Generate with default values (50 threats, 30 days of stats)
+python manage.py populate_fake_data
+
+# Generate 100 threats and 60 days of statistics
+python manage.py populate_fake_data --threats 100 --days 60
+
+# Generate only 20 threats with default days
+python manage.py populate_fake_data --threats 20
+```
+
+### 7. Start Development Server
 ```bash
 python manage.py runserver
 ```
