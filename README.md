@@ -1,4 +1,4 @@
-# Cyber Threat Intelligence Dashboar
+# Cyber Threat Intelligence Dashboard
 
 ### INF601 - Advanced Programming in Python
 ### Samuel Amoateng
