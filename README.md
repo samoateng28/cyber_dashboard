@@ -1,108 +1,131 @@
-# Django Application Setup Guide
+# Cyber Threat Intelligence Dashboard
 
-This guide will walk you through setting up and running the Django application.
+### INF601 - Advanced Programming in Python
+### Samuel Amoateng
+### Final Project
 
-## Prerequisites
+## Description
 
-- Python 3.x installed on your system
-- pip (Python package installer)
+A comprehensive Django-based web application designed to monitor, track, and visualize cybersecurity threats in real-time. This dashboard provides security professionals with an intuitive interface to manage threat intelligence data, analyze threat patterns, and generate statistical insights. The application features automated data population capabilities for testing, customizable threat severity levels, and detailed threat analytics to support informed security decision-making.
 
-## Installation & Setup
+## Getting Started
 
-### 1. Create and Activate Virtual Environment
+### Dependencies
 
-#### For Windows:
+* Python 3.x or higher
+* pip (Python package installer)
+* Operating System: Windows 10/11, macOS, or Linux
+* Django framework
+* Required Python packages (specified in requirements.txt):
+  * Django
+  * Faker (for generating test data)
+  * Other dependencies as listed in requirements.txt
+
+### Installing
+
+* Clone or download this repository to your local machine
+* Ensure Python 3.x is installed on your system
+* No modifications to files/folders are needed after download
+
+### Executing program
+
+#### Step 1: Create and activate virtual environment
+
+**For Windows:**
 ```bash
-# Create virtual environment
 python -m venv venv
-
-# Activate virtual environment
 venv\Scripts\activate
 ```
 
-#### For Mac/Linux:
+**For Mac/Linux:**
 ```bash
-# Create virtual environment
 python3 -m venv venv
-
-# Activate virtual environment
 source venv/bin/activate
 ```
 
-### 2. Navigate to Project Directory
+#### Step 2: Navigate to project directory
 ```bash
 cd threat_dashboard
 ```
 
-### 3. Install Dependencies
+#### Step 3: Install required dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Database Setup
-
-#### Make Migrations
+#### Step 4: Set up the database
 ```bash
 python manage.py makemigrations
-```
-
-#### Run Migrations
-```bash
 python manage.py migrate
 ```
 
-### 5. Create Superuser
+#### Step 5: Create an admin user
 ```bash
 python manage.py createsuperuser
 ```
-Follow the prompts to set up your admin username, email, and password.
 
-### 6. Populate Fake Data (Optional)
-
-For testing purposes, you can populate the database with fake threat data:
-
+#### Step 6: (Optional) Populate with test data
 ```bash
-python manage.py populate_fake_data
-```
-
-#### Available Options:
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--threats` | int | 50 | Number of fake threats to generate |
-| `--days` | int | 30 | Number of days of statistics to generate |
-
-#### Examples:
-```bash
-# Generate with default values (50 threats, 30 days of stats)
+# Generate 50 threats and 30 days of statistics (default)
 python manage.py populate_fake_data
 
-# Generate 100 threats and 60 days of statistics
+# Or customize the amount of data
 python manage.py populate_fake_data --threats 100 --days 60
-
-# Generate only 20 threats with default days
-python manage.py populate_fake_data --threats 20
 ```
 
-### 7. Start Development Server
+#### Step 7: Start the development server
 ```bash
 python manage.py runserver
 ```
 
-The application will be available at `http://127.0.0.1:8000/`
+#### Step 8: Access the application
+* Main dashboard: `http://127.0.0.1:8000/`
+* Admin panel: `http://127.0.0.1:8000/admin/`
 
-The admin panel can be accessed at `http://127.0.0.1:8000/admin/`
+## Help
 
-## Deactivating Virtual Environment
+Common issues and solutions:
 
-When you're done working on the project, you can deactivate the virtual environment:
+**Migration errors:**
+```bash
+python manage.py migrate --run-syncdb
+```
 
+**Check installed packages:**
+```bash
+pip list
+```
+
+**Deactivate virtual environment when finished:**
 ```bash
 deactivate
 ```
 
-## Troubleshooting
+**Verify virtual environment is activated:**
+Look for `(venv)` at the beginning of your command prompt
 
-- If you encounter any migration issues, try running `python manage.py migrate --run-syncdb`
-- Make sure all dependencies are installed correctly by checking `pip list`
-- Ensure your virtual environment is activated before running any Django commands
+## Authors
+
+Samuel Amoateng
+
+## Version History
+
+* 1.0
+    * Initial Release
+    * Core dashboard functionality
+    * Threat management system
+    * Fake data generation for testing
+    * Admin panel integration
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details
+
+## Acknowledgments
+
+Inspiration, code snippets, and resources:
+* [Django Documentation](https://docs.djangoproject.com/)
+* [Faker Python Library](https://faker.readthedocs.io/)
+* [awesome-readme](https://github.com/matiassingers/awesome-readme)
+* [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
+* INF601 - Advanced Programming in Python course materials
