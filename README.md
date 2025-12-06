@@ -43,16 +43,16 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-#### Step 2: Navigate to project directory
-```bash
-cd threat_dashboard
-```
 
-#### Step 3: Install required dependencies
+
+#### Step 2: Install required dependencies
 ```bash
 pip install -r requirements.txt
 ```
-
+#### Step 3: Navigate to project directory
+```bash
+cd threat_dashboard
+```
 #### Step 4: Set up the database
 ```bash
 python manage.py makemigrations
