@@ -406,11 +406,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const lookupBtn = document.getElementById('lookupBtn');
     
     // Clear input after successful lookup (when result is shown)
-    {% if result and not has_error %}
+    /*{% if result and not has_error %}
         input.value = '';
         input.focus();
     {% endif %}
-    
+    */
     // Handle form submission
     form.addEventListener('submit', function(e) {
         // Disable button during submission
